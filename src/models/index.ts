@@ -1,6 +1,6 @@
 import { HfInference } from '@huggingface/inference';
 
-const hf = new HfInference('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');
+const hf = new HfInference('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');
 
 export const analyzeEmotion = async (text: string) => {
   try {

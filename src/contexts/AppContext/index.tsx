@@ -77,7 +77,7 @@ export const AppContextProvider = ({ children }: ChildrenProps):JSX.Element => {
           const dataFetch = res.data as FileCSV[];
           setData(dataFetch);
           const arr = []
-          arr.push(...data.slice(10, 30));
+          arr.push(...data.slice(10, 20));
           setMinurData(arr);
 
         },

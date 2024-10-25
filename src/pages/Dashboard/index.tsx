@@ -1,12 +1,21 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext"
+import { useAuth } from "../../contexts/AuthContext";
 import { useApp } from "../../contexts/AppContext";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import Load from "../../components/Load";
 import Error from "../../components/Error";
-import { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { Emotions } from "../../types/AppTypes";
 
-const Dashboard = ():JSX.Element => {
+type Emotion = Emotions[];
+type EmotionSentimentItem = { label: string; score: number };
+  
+interface EmotionYSentiment {
+  emotion: Emotion[], 
+  sentiment: Emotion[] 
+}
+
+const Dashboard = (): JSX.Element => {
   const { isLoggedIn } = useAuth();
   const { 
     data,
@@ -14,97 +23,109 @@ const Dashboard = ():JSX.Element => {
     isErr,
     setIsErr,
     isLoad,
-   } = useApp()
+  } = useApp();
   
 
-  useEffect(()=>{
-    for (const key in analyzeData) {
-      if (Object.prototype.hasOwnProperty.call(analyzeData, key)) {
-        console.log(analyzeData[key].emotion);
+  const [dataEmotionYSentiment, setDataEmotionYSentiment] = useState<EmotionYSentiment>({
+    emotion: [],
+    sentiment: []
+  });
+
+  // Estados para almacenar los resultados
+  const [highestEmotion, setHighestEmotion] = useState<EmotionSentimentItem | null>(null);
+  const [highestSentiment, setHighestSentiment] = useState<EmotionSentimentItem | null>(null);
+  const [emotionCounts, setEmotionCounts] = useState<Record<string, number>>({});
+  const [sentimentCounts, setSentimentCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const chargeInfo = () => {
+      const emotion: Emotion[] = [];
+      const sentiment: Emotion[] = [];
+      
+      for (const key in analyzeData) {
+        if (Object.prototype.hasOwnProperty.call(analyzeData, key)) {
+          if (analyzeData[key].emotion) emotion.push(analyzeData[key].emotion);
+          else sentiment.push(analyzeData[key].sentiment);
+        }
       }
-    }
-  },[analyzeData])
+      setDataEmotionYSentiment({ emotion, sentiment });
+    };
+    chargeInfo();
+  }, [analyzeData]);
+
+  useEffect(() => {
+    if (!dataEmotionYSentiment) return;
   
-   const dataSentiments = [
-    { label: "NEG", score: 0.900 },
-    { label: "POS", score: 0.070 },
-    { label: "NEU", score: 0.004 },
-  ];
-  const dataEmotions = [
-    { label: "joy", score: 0.9796417951583862 },
-    { label: "surprise", score: 0.00461892643943429 },
-    { label: "fear", score: 0.0018139064777642488 },
-    { label: "disgust", score: 0.0014999592676758766 },
-    { label: "sadness", score: 0.0004579558444675058 },
-    { label: "anger", score: 0.00038118776865303516 },
-    { label: "others", score: 0.011586288921535015 },
-  ];
+    const findHighestScore = (items: EmotionSentimentItem[][]): EmotionSentimentItem | null => {
+      let highest: EmotionSentimentItem | null = null;
+      items.flat().forEach(item => {
+        if (!highest || item.score > highest.score) highest = item;
+      });
+      return highest;
+    };
   
+    setHighestEmotion(findHighestScore(dataEmotionYSentiment.emotion));
+    setHighestSentiment(findHighestScore(dataEmotionYSentiment.sentiment));
+  
+    // Nueva función para contar solo el label con el score más alto
+    const countOccurrences = (items: EmotionSentimentItem[][]): Record<string, number> => {
+      const counts: Record<string, number> = {};
+      items.forEach(arr => {
+        const maxItem = arr.reduce((prev, current) => (current.score > prev.score ? current : prev));
+        counts[maxItem.label] = (counts[maxItem.label] || 0) + 1;
+      });
+      return counts;
+    };
+  
+    setEmotionCounts(countOccurrences(dataEmotionYSentiment.emotion));
+    setSentimentCounts(countOccurrences(dataEmotionYSentiment.sentiment));
+  
+  }, [dataEmotionYSentiment]);
   
 
   const COLORS = ["#00C49F", "#FFBB28", "#FF8042", "#0088FE"];
-  
-  return(
+
+  return (
     <>
-      {!isLoggedIn && 
-        <Navigate to={'/auth'} replace={true} />
-      }
+      {!isLoggedIn && <Navigate to={'/auth'} replace={true} />}
 
-      { isErr && 
-        <Error message="Ocurrio un error al obtener uno de los datos, vuelva a intentarlo mas tarde"/> 
-      }
+      {isErr && <Error message="Ocurrio un error al obtener uno de los datos, vuelva a intentarlo mas tarde" />}
 
-      {/* Resumen de Analisis */}
-      <div className="col-span-3 flex flex-col items-center lg:col-span-3 border-spacing-1 ">
-          
-          <h2 className="text-xl font-bold mb-4">
-            Data analyzed
-          </h2>
-          <div className="flex flex-wrap justify-center gap-4">
-            <div className="border border-violet-400 border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-              <p className="text-lg font-semibold">Data charge</p>
-              <p className="text-3xl">{data.length}</p>
-            </div>
-            <div className="border border-violet-400 border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-              <p className="text-lg font-semibold">Data analyzed</p>
-              <p className="text-3xl">{analyzeData.length}</p>
-            </div>
+      <div className="col-span-3 flex flex-col items-center lg:col-span-3 border-spacing-1">
+        <h2 className="text-xl font-bold mb-4">Data analyzed</h2>
+        <div className="flex flex-wrap justify-center gap-4">
+          <div className="border border-violet-400 shadow-md p-4 rounded-lg w-36 text-center">
+            <p className="text-lg font-semibold">Data charge</p>
+            <p className="text-3xl">{data.length}</p>
+          </div>
+          <div className="border border-violet-400 shadow-md p-4 rounded-lg w-36 text-center">
+            <p className="text-lg font-semibold">Data analyzed</p>
+            <p className="text-3xl">{analyzeData.length}</p>
           </div>
         </div>
+      </div>
 
-      {/* Resumen de datos */}
       <div id="sentiments">
         <div className="col-span-3 flex flex-col items-center lg:col-span-3 border-spacing-1 border-red-700">
           <h1> Sentiments </h1>
           <h2 className="text-xl font-bold mb-4">Summary</h2>
           <div className="flex flex-wrap justify-center gap-4">
-            <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-              <p className="text-lg font-semibold">Messages</p>
-              <p className="text-3xl">300</p>
-            </div>
-            <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-              <p className="text-lg font-semibold">Positive</p>
-              <p className="text-3xl">120</p>
-            </div>
-            <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-              <p className="text-lg font-semibold">Neutral</p>
-              <p className="text-3xl">100</p>
-            </div>
-            <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-              <p className="text-lg font-semibold">Negative</p>
-              <p className="text-3xl">80</p>
-            </div>
+            {Object.entries(sentimentCounts).map(([label, count]) => (
+              <div key={label} className="border border-white shadow-md p-4 rounded-lg w-36 text-center">
+                <p className="text-lg font-semibold">{label}</p>
+                <p className="text-3xl">{count}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="p-4 flex flex-col space-y-8 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:items-start">
-          {/* Gráficos */}
+        <div className="p-4 flex flex-col space-y-8 lg:grid lg:grid-cols-3 lg:gap-4 lg:items-start">
           <div className="col-span-1 flex flex-col items-center">
-            <h2 className="text-xl font-bold mb-4">Emotions Overview</h2>
+            <h2 className="text-xl font-bold mb-4">Sentiments Overview</h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={dataSentiments}
+                  data={Object.entries(sentimentCounts).map(([label, count]) => ({ label, score: count }))}
                   dataKey="score"
                   nameKey="label"
                   cx="50%"
@@ -113,7 +134,7 @@ const Dashboard = ():JSX.Element => {
                   fill="#8884d8"
                   label
                 >
-                  {dataSentiments.map((entry, index) => (
+                  {Object.keys(sentimentCounts).map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -125,14 +146,14 @@ const Dashboard = ():JSX.Element => {
           <div className="col-span-2 flex flex-col items-center">
             <h2 className="text-xl font-bold mb-4">Sentiments Breakdown</h2>
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={dataSentiments}>
+              <BarChart data={Object.entries(sentimentCounts).map(([label, count]) => ({ label, score: count }))}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="label" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="score" fill="#82ca9d">
-                  {dataSentiments.map((entry, index) => (
+                  {Object.keys(sentimentCounts).map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Bar>
@@ -141,60 +162,36 @@ const Dashboard = ():JSX.Element => {
           </div>
         </div>
       </div>
+
       <div className="divider px-5"></div>
+
       <div id="emotions">
         <div className="col-span-3 flex flex-col items-center lg:col-span-3 border-spacing-1">
-          {
-            isLoad ?
-              <Load />
-            :
+          {isLoad ? (
+            <Load />
+          ) : (
             <>
               <h1> Emotions </h1>
               <h2 className="text-xl font-bold mb-4">Summary</h2>
               <div className="flex flex-wrap justify-center gap-4">
-                <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-                  <p className="text-lg font-semibold">Joy</p>
-                  <p className="text-3xl">300</p>
-                </div>
-                <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-                  <p className="text-lg font-semibold">Surprise</p>
-                  <p className="text-3xl">120</p>
-                </div>
-                <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-                  <p className="text-lg font-semibold">Fear</p>
-                  <p className="text-3xl">100</p>
-                </div>
-                <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-                  <p className="text-lg font-semibold">Disgust</p>
-                  <p className="text-3xl">80</p>
-                </div>
-                <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-                  <p className="text-lg font-semibold">Sadness</p>
-                  <p className="text-3xl">300</p>
-                </div>
-                <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-                  <p className="text-lg font-semibold">Anger</p>
-                  <p className="text-3xl">120</p>
-                </div>
-                <div className="border border-white border-spacing-1 shadow-md p-4 rounded-lg w-36 text-center">
-                  <p className="text-lg font-semibold">Others</p>
-                  <p className="text-3xl">100</p>
-                </div>
+                {Object.entries(emotionCounts).map(([label, count]) => (
+                  <div key={label} className="border border-white shadow-md p-4 rounded-lg w-36 text-center">
+                    <p className="text-lg font-semibold">{label}</p>
+                    <p className="text-3xl">{count}</p>
+                  </div>
+                ))}
               </div>
             </>
-          }
-          
-          
+          )}
         </div>
 
-        <div className=" p-4 flex flex-col space-y-8 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4 lg:items-start">
-          {/* Gráficos */}
+        <div className="p-4 flex flex-col space-y-8 lg:grid lg:grid-cols-3 lg:gap-4 lg:items-start">
           <div className="col-span-1 flex flex-col items-center">
             <h2 className="text-xl font-bold mb-4">Emotions Overview</h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={dataSentiments}
+                  data={Object.entries(emotionCounts).map(([label, count]) => ({ label, score: count }))}
                   dataKey="score"
                   nameKey="label"
                   cx="50%"
@@ -203,7 +200,7 @@ const Dashboard = ():JSX.Element => {
                   fill="#8884d8"
                   label
                 >
-                  {dataSentiments.map((entry, index) => (
+                  {Object.keys(emotionCounts).map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -213,16 +210,16 @@ const Dashboard = ():JSX.Element => {
           </div>
 
           <div className="col-span-2 flex flex-col items-center">
-            <h2 className="text-xl font-bold mb-4">Sentiments Breakdown</h2>
+            <h2 className="text-xl font-bold mb-4">Emotions Breakdown</h2>
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={dataEmotions}>
+              <BarChart data={Object.entries(emotionCounts).map(([label, count]) => ({ label, score: count }))}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="label" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="score" fill="#82ca9d">
-                  {dataEmotions.map((entry, index) => (
+                  {Object.keys(emotionCounts).map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Bar>
@@ -232,7 +229,7 @@ const Dashboard = ():JSX.Element => {
         </div>
       </div>
     </>
-  )
-}
+  );
+};
 
-export default Dashboard
+export default Dashboard;
