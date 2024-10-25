@@ -1,5 +1,4 @@
-const Error = ({message}: {message: string}):JSX.Element => {
-  
+const Error = ({message}: {message: string}):JSX.Element => {  
   return(
     <div className="w-100 p-2">
       <div role="alert" className="alert alert-error">

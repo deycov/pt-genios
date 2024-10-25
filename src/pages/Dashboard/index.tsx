@@ -4,6 +4,7 @@ import { useApp } from "../../contexts/AppContext";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import Load from "../../components/Load";
 import Error from "../../components/Error";
+import { useEffect } from "react";
 
 const Dashboard = ():JSX.Element => {
   const { isLoggedIn } = useAuth();
@@ -15,7 +16,16 @@ const Dashboard = ():JSX.Element => {
     isLoad,
    } = useApp()
   
-  const dataSentiments = [
+
+  useEffect(()=>{
+    for (const key in analyzeData) {
+      if (Object.prototype.hasOwnProperty.call(analyzeData, key)) {
+        console.log(analyzeData[key].emotion);
+      }
+    }
+  },[analyzeData])
+  
+   const dataSentiments = [
     { label: "NEG", score: 0.900 },
     { label: "POS", score: 0.070 },
     { label: "NEU", score: 0.004 },
@@ -29,6 +39,7 @@ const Dashboard = ():JSX.Element => {
     { label: "anger", score: 0.00038118776865303516 },
     { label: "others", score: 0.011586288921535015 },
   ];
+  
   
 
   const COLORS = ["#00C49F", "#FFBB28", "#FF8042", "#0088FE"];
@@ -44,7 +55,7 @@ const Dashboard = ():JSX.Element => {
       }
 
       {/* Resumen de Analisis */}
-      <div className="col-span-3 flex flex-col items-center lg:col-span-3 border-spacing-1 border-blue-700">
+      <div className="col-span-3 flex flex-col items-center lg:col-span-3 border-spacing-1 ">
           
           <h2 className="text-xl font-bold mb-4">
             Data analyzed

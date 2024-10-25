@@ -11,7 +11,12 @@ interface App {
   setIsErr: SetterBoolean
   isLoad: boolean,
   analyzeData: AnalizeCSV[],
+  minurData: FileCSV[],
+  setAnalyzeData: React.Dispatch<React.SetStateAction<AnalizeCSV[]>>, 
+  setErrMsg: React.Dispatch<React.SetStateAction<string>>, 
+  setIsLoad: SetterBoolean
 }
+
 
 const initializeApp = {
   data: [],
@@ -19,7 +24,11 @@ const initializeApp = {
   isErr: false,
   setIsErr: ()=>{},
   isLoad: true,
-  analyzeData: []
+  analyzeData: [],
+  minurData: [],
+  setAnalyzeData: ()=>{}, 
+  setErrMsg: ()=>{}, 
+  setIsLoad: ()=>{}
 }
 
 const AppContext = React.createContext<App>(initializeApp);
@@ -90,6 +99,10 @@ export const AppContextProvider = ({ children }: ChildrenProps):JSX.Element => {
     isErr,
     setIsErr,
     isLoad,
+    minurData,
+    setAnalyzeData, 
+    setErrMsg, 
+    setIsLoad
   }
 
   return(
